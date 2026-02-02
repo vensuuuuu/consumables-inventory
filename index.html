@@ -6,8 +6,8 @@
   <title>Consumables</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
+
 <body>
- <body>
   <header class="topbar">
     <div class="brand">
       <h1>Consumables</h1>
@@ -22,12 +22,21 @@
 
   <main class="wrap">
 
-    <!--  INVENTORY TAB -->
+    <!-- SIDEBAR (only once) -->
+    <aside id="side-bar">
+      <div class="sidenav">
+        <a href="/">
+          <img src="images/CO LOGO.png" class="LOGO" alt="Logo">
+          <i class="material-icons">&#xe88a;</i>
+        </a>
+      </div>
+    </aside>
+
+    <!-- INVENTORY TAB -->
     <section id="view-inventory" class="view show">
       <div class="card">
         <h2 class="cardTitle">Inventory</h2>
 
-        <!-- your inventory table here -->
         <table class="grid">
           <thead>
             <tr>
@@ -35,32 +44,21 @@
               <th>Item Description</th>
               <th>Category</th>
               <th>Stock</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="itemsBody"></tbody>
-
-          <tfoot>
-            <tr class="addRow">
-              <td><input id="newArticle" placeholder="e.g. 103" /></td>
-              <td><input id="newName" placeholder="e.g. HRT Jade Tissue" /></td>
-              <td><input id="newCategory" placeholder="Office Supplies" /></td>
-              <td><input id="newStock" type="number" min="0" value="0" /></td>
-              <td><button id="addItemBtn" type="button" class="btn primary">+ Add</button></td>
-            </tr>
-          </tfoot>
         </table>
       </div>
     </section>
 
-    <!--  INCOMING TAB = RECEIVING REPORT -->
+    <!-- INCOMING TAB -->
     <section id="view-incoming" class="view">
       <div class="card formCard">
         <h2 class="cardTitle">Receiving Report</h2>
 
         <form id="receivingForm" class="form">
-          <label>GRN Incoming *</label>
-          <input id="grnIncoming" placeholder="GRN Number" required />
+         
+          <input id="grnIncoming" placeholder="e.g. 1005 #103" required />
 
           <label>Warehouse Article *</label>
           <input id="warehouseArticle" placeholder="# 103 HRT Jade Tissue" required />
@@ -74,17 +72,36 @@
           <label>Date *</label>
           <input id="dateIn" type="datetime-local" required />
 
+          <label>Category *</label>
+          <input id="inCategory" placeholder="Office Supplies" required />
+
           <button type="submit" class="btn primary">Submit</button>
         </form>
+
+        <!-- OPTIONAL: show incoming logs -->
+        <table class="grid" style="margin-top:16px;">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Warehouse Article</th>
+              <th>Price</th>
+              <th>GRN</th>
+            </tr>
+          </thead>
+          <tbody id="incomingBody"></tbody>
+        </table>
       </div>
     </section>
 
-    <!--  OUTGOING TAB = RELEASING FORM -->
+    <!-- OUTGOING TAB -->
     <section id="view-outgoing" class="view">
       <div class="card formCard">
         <h2 class="cardTitle">Releasing Form</h2>
 
         <form id="releasingForm" class="form">
+
           <label>Item Description *</label>
           <input id="releaseItem" placeholder="# 103 HRT Jade Tissue" required />
 
@@ -99,11 +116,26 @@
 
           <button type="submit" class="btn primary">Submit</button>
         </form>
+
+        <!-- OPTIONAL: show outgoing logs -->
+        <table class="grid" style="margin-top:16px;">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Released To</th>
+              <th>Remarks</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="outgoingBody"></tbody>
+        </table>
       </div>
     </section>
 
   </main>
 
-  <script type="module" src="JS/app.js"></script>
+    <script type="module" src="./js/app.js"></script>
 </body>
 </html>
+

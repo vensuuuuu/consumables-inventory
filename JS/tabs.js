@@ -1,16 +1,12 @@
-export function initTabs() {
-  const tabs = document.querySelectorAll(".tab");
-  const views = document.querySelectorAll(".view");
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      btn.classList.add("active");
 
-  function show(view) {
-    tabs.forEach(t => t.classList.toggle("active", t.dataset.view === view));
-    views.forEach(v => v.classList.remove("show"));
-    document.getElementById(`view-${view}`)?.classList.add("show");
-  }
-
-  tabs.forEach(btn => {
-    btn.addEventListener("click", () => show(btn.dataset.view));
+      const view = btn.dataset.view;
+      document.querySelectorAll(".view").forEach((v) => v.classList.remove("show"));
+      document.getElementById(`view-${view}`)?.classList.add("show");
+    });
   });
-
-  show("inventory"); // default
-}
+});

@@ -1,58 +1,78 @@
 import {
-  collection, addDoc, query, orderBy,
-  onSnapshot, doc, updateDoc, getDocs, where, limit
+  collection, addDoc, getDocs, query, where, limit,
+  doc, updateDoc, orderBy, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { db } from "./firebase.js";
 
 const outgoingCol = collection(db, "outgoing");
 const itemsCol = collection(db, "items");
 
-async function findItem(name) {
+async function findItemByName(name) {
   const q = query(itemsCol, where("name", "==", name), limit(1));
   const snap = await getDocs(q);
   return snap.empty ? null : snap.docs[0];
 }
 
+function parseReleaseItem(text) {
+  const t = (text || "").trim();
+  const match = t.match(/#\s*(\d+)\s+(.*)/);
+  if (!match) return { name: t };
+  return { name: match[2].trim() };
+}
+
 export function initOutgoing() {
-  onSnapshot(query(outgoingCol, orderBy("createdAt", "desc")), snap => {
-    outgoingBody.innerHTML = "";
-    snap.forEach(d => {
-      const x = d.data();
-      outgoingBody.innerHTML += `
-        <tr>
-          <td>${x.date}</td>
-          <td>${x.item}</td>
-          <td>${x.qty}</td>
-          <td>${x.issuedTo}</td>
-        </tr>
-      `;
+  // ✅ show outgoing table if you have <tbody id="outgoingBody"></tbody>
+  const outgoingBody = document.getElementById("outgoingBody");
+  if (outgoingBody) {
+    onSnapshot(query(outgoingCol, orderBy("createdAt", "desc")), (snap) => {
+      outgoingBody.innerHTML = "";
+      snap.forEach((d) => {
+        const x = d.data();
+        outgoingBody.innerHTML += `
+          <tr>
+            <td>${x.item ?? ""}</td>
+            <td>${x.qty ?? ""}</td>
+            <td>${x.releasedTo ?? ""}</td>
+            <td>${x.remarks ?? ""}</td>
+            <td>${x.createdAt ? new Date(x.createdAt).toLocaleString() : ""}</td>
+          </tr>
+        `;
+      });
     });
-  });
+  }
 
-  addOutgoingBtn.addEventListener("click", async () => {
-    const item = outItem.value.trim();
-    const qty = Number(outQty.value);
-    if (!item || qty <= 0) return alert("Invalid input");
+  const form = document.getElementById("releasingForm");
+  if (!form) return;
 
-    const found = await findItem(item);
-    if (!found) return alert("Item not found");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-    const current = found.data().stock || 0;
-    if (qty > current) return alert("Not enough stock");
+    const releaseText = document.getElementById("releaseItem").value.trim();
+    const qty = Number(document.getElementById("qtyOut").value);
+    const releasedTo = document.getElementById("releasedTo").value.trim();
+    const remarks = document.getElementById("remarks").value.trim();
 
-    await updateDoc(doc(db, "items", found.id), {
-      stock: current - qty
-    });
+    if (!releaseText || !releasedTo) return alert("Fill Item and Released To");
+    if (!qty || qty <= 0) return alert("Invalid QuantityOut");
+
+    const { name } = parseReleaseItem(releaseText);
+    const found = await findItemByName(name);
+    if (!found) return alert("Item not found in inventory");
+
+    const current = Number(found.data().stock ?? 0);
+    if (qty > current) return alert(`Not enough stock. Current stock: ${current}`);
+
+    await updateDoc(doc(db, "items", found.id), { stock: current - qty });
 
     await addDoc(outgoingCol, {
-      date: outDate.value,
-      item, qty,
-      issuedTo: outTo.value,
+      item: name,
+      qty,
+      releasedTo,
+      remarks,
       createdAt: Date.now()
     });
 
-    outItem.value = "";
-    outQty.value = 1;
-    outTo.value = "";
+    alert("✅ Releasing Form submitted! Stock updated.");
+    form.reset();
   });
 }

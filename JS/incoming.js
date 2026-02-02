@@ -1,55 +1,165 @@
 import {
-  collection, addDoc, query, orderBy,
-  onSnapshot, doc, updateDoc, getDocs, where, limit
+  collection, addDoc, query, orderBy, onSnapshot,
+  getDocs, where, limit, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { db } from "./firebase.js";
 
 const incomingCol = collection(db, "incoming");
 const itemsCol = collection(db, "items");
 
-async function findItem(name) {
-  const q = query(itemsCol, where("name", "==", name), limit(1));
-  const snap = await getDocs(q);
-  return snap.empty ? null : snap.docs[0];
+// "# 103 HRT Jade Tissue" -> { name: "HRT Jade Tissue" }
+function parseWarehouseArticle(text) {
+  const t = (text || "").trim();
+  const match = t.match(/#\s*(\d+)\s+(.*)/);
+  if (!match) return { name: t };
+  return { name: match[2].trim() };
+}
+
+// ✅ GRN input contains article too: "1005 #103" or "GRN-1005 #103"
+function parseGrnIncoming(text) {
+  const t = (text || "").trim();
+
+  // group1 = GRN, group2 = article
+  const match = t.match(/^(.+?)\s*#\s*(\d+)\s*$/);
+
+  // if user didn't type #103, still return GRN but article blank
+  if (!match) return { grn: t, article: "" };
+
+  return {
+    grn: match[1].trim(),
+    article: match[2].trim()
+  };
+}
+
+async function findItem(article, name) {
+  // 1) match by article first
+  if (article) {
+    const q1 = query(itemsCol, where("article", "==", article), limit(1));
+    const s1 = await getDocs(q1);
+    if (!s1.empty) return { doc: s1.docs[0], matchedBy: "article" };
+  }
+
+  // 2) fallback match by name
+  const q2 = query(itemsCol, where("name", "==", name), limit(1));
+  const s2 = await getDocs(q2);
+  if (!s2.empty) return { doc: s2.docs[0], matchedBy: "name" };
+
+  return null;
 }
 
 export function initIncoming() {
-  onSnapshot(query(incomingCol, orderBy("createdAt", "desc")), snap => {
-    incomingBody.innerHTML = "";
-    snap.forEach(d => {
-      const x = d.data();
-      incomingBody.innerHTML += `
-        <tr>
-          <td>${x.date}</td>
-          <td>${x.item}</td>
-          <td>${x.qty}</td>
-          <td>${x.warehouse}</td>
-        </tr>
-      `;
+  // ✅ incoming table
+  const incomingBody = document.getElementById("incomingBody");
+  if (incomingBody) {
+    onSnapshot(query(incomingCol, orderBy("createdAt", "desc")), (snap) => {
+      incomingBody.innerHTML = "";
+      snap.forEach((d) => {
+        const x = d.data();
+        incomingBody.innerHTML += `
+          <tr>
+            <td>${x.date ?? ""}</td>
+            <td>${x.item ?? ""}</td>
+            <td>${x.qty ?? ""}</td>
+            <td>${x.warehouseArticle ?? ""}</td>
+            <td>${x.price ?? ""}</td>
+            <td>${x.grn ?? ""}</td>
+          </tr>
+        `;
+      });
     });
-  });
+  }
 
-  addIncomingBtn.addEventListener("click", async () => {
-    const item = inItem.value.trim();
-    const qty = Number(inQty.value);
-    if (!item || qty <= 0) return alert("Invalid input");
+  // ✅ form submit
+  const form = document.getElementById("receivingForm");
+  if (!form) return;
 
-    const found = await findItem(item);
-    if (!found) return alert("Item not found");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-    await updateDoc(doc(db, "items", found.id), {
-      stock: (found.data().stock || 0) + qty
-    });
+    // ✅ GRN + article merged here
+    const grnText = document.getElementById("grnIncoming").value.trim();
+    const { grn, article } = parseGrnIncoming(grnText);
 
+    const whText = document.getElementById("warehouseArticle").value.trim();
+    const qty = Number(document.getElementById("qtyIn").value);
+    const price = Number(document.getElementById("price").value);
+    const date = document.getElementById("dateIn").value;
+
+    const categoryInput = (document.getElementById("inCategory")?.value || "").trim();
+
+    if (!grnText || !whText) return alert("Please fill GRN and Warehouse Article");
+    if (!grn) return alert("Invalid GRN input");
+    if (!article) return alert("Please include Article # in GRN (example: 1005 #103)");
+    if (!qty || qty <= 0) return alert("Invalid QuantityIN");
+    if (!categoryInput) return alert("Please enter Category");
+
+    const parsed = parseWarehouseArticle(whText);
+    const name = parsed.name;
+
+    if (!name) return alert("Invalid Warehouse Article");
+
+    const foundWrap = await findItem(article, name);
+
+    if (foundWrap) {
+      const found = foundWrap.doc;
+      const data = found.data();
+
+      const currentStock = Number(data.stock ?? 0);
+      const currentCategory = (data.category ?? "").trim();
+      const currentArticle = (data.article ?? "").trim();
+
+      // ✅ If matched by NAME but article conflicts, stop.
+      if (
+        foundWrap.matchedBy === "name" &&
+        article &&
+        currentArticle &&
+        article !== currentArticle
+      ) {
+        return alert(
+          `This item already exists with Article #${currentArticle}.\n` +
+          `You typed Article #${article}.\n\n` +
+          `Fix the Article # in GRN to match, then submit again.`
+        );
+      }
+
+      const updates = { stock: currentStock + qty };
+
+      // ✅ update category only if empty/N/A
+      if (!currentCategory || currentCategory.toLowerCase() === "n/a") {
+        updates.category = categoryInput;
+      }
+
+      // ✅ update article if missing (but normally it already exists)
+      if (!currentArticle && article) {
+        updates.article = article;
+      }
+
+      await updateDoc(doc(db, "items", found.id), updates);
+    } else {
+      // ✅ create new item with correct article + category
+      await addDoc(itemsCol, {
+        article,
+        name,
+        category: categoryInput,
+        stock: qty,
+        createdAt: Date.now()
+      });
+    }
+
+    // ✅ log receiving report
     await addDoc(incomingCol, {
-      date: inDate.value,
-      item, qty,
-      warehouse: inWh.value,
+      grn,
+      warehouseArticle: whText,
+      item: name,
+      qty,
+      price: isNaN(price) ? 0 : price,
+      date,
+      category: categoryInput,
+      article,
       createdAt: Date.now()
     });
 
-    inItem.value = "";
-    inQty.value = 1;
-    inWh.value = "";
+    alert("✅ Receiving Report submitted! Inventory updated.");
+    form.reset();
   });
 }

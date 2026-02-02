@@ -1,9 +1,10 @@
-import { initTabs } from "./tabs.js";
 import { initInventory } from "./inventory.js";
 import { initIncoming } from "./incoming.js";
 import { initOutgoing } from "./outgoing.js";
+import "./tabs.js"; // if you have tabs logic here
 
-initTabs();
-initInventory();
-initIncoming();
-initOutgoing();
+document.addEventListener("DOMContentLoaded", () => {
+  initInventory();
+  initIncoming();
+  initOutgoing();
+});
