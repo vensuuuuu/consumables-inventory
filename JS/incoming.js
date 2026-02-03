@@ -7,6 +7,34 @@ import { db } from "./firebase.js";
 const incomingCol = collection(db, "incoming");
 const itemsCol = collection(db, "items");
 
+// DATE FORMAT//
+function formatDateTime(value) {
+  if (!value) return "";
+
+  // if it's already a timestamp (number)
+  if (typeof value === "number") {
+    return new Date(value).toLocaleString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
+  }
+
+  // if it's from datetime-local input (YYYY-MM-DDTHH:mm)
+  return new Date(value).toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+}
+
+
 // "# 103 HRT Jade Tissue" -> { name: "HRT Jade Tissue" }
 function parseWarehouseArticle(text) {
   const t = (text || "").trim();
@@ -15,21 +43,6 @@ function parseWarehouseArticle(text) {
   return { name: match[2].trim() };
 }
 
-// ✅ GRN input contains article too: "1005 #103" or "GRN-1005 #103"
-function parseGrnIncoming(text) {
-  const t = (text || "").trim();
-
-  // group1 = GRN, group2 = article
-  const match = t.match(/^(.+?)\s*#\s*(\d+)\s*$/);
-
-  // if user didn't type #103, still return GRN but article blank
-  if (!match) return { grn: t, article: "" };
-
-  return {
-    grn: match[1].trim(),
-    article: match[2].trim()
-  };
-}
 
 async function findItem(article, name) {
   // 1) match by article first
@@ -57,28 +70,28 @@ export function initIncoming() {
         const x = d.data();
         incomingBody.innerHTML += `
           <tr>
-            <td>${x.date ?? ""}</td>
+            <td>${formatDateTime(x.date)}</td>
             <td>${x.item ?? ""}</td>
             <td>${x.qty ?? ""}</td>
             <td>${x.warehouseArticle ?? ""}</td>
             <td>${x.price ?? ""}</td>
-            <td>${x.grn ?? ""}</td>
+            <td>${x.article ?? ""}</td>
           </tr>
         `;
       });
     });
   }
 
-  // ✅ form submit
+  //  form submit
   const form = document.getElementById("receivingForm");
   if (!form) return;
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    // ✅ GRN + article merged here
-    const grnText = document.getElementById("grnIncoming").value.trim();
-    const { grn, article } = parseGrnIncoming(grnText);
+    //  GRN + article merged here
+    const article = document.getElementById("inArticle").value.trim();
+
 
     const whText = document.getElementById("warehouseArticle").value.trim();
     const qty = Number(document.getElementById("qtyIn").value);
@@ -87,9 +100,8 @@ export function initIncoming() {
 
     const categoryInput = (document.getElementById("inCategory")?.value || "").trim();
 
-    if (!grnText || !whText) return alert("Please fill GRN and Warehouse Article");
-    if (!grn) return alert("Invalid GRN input");
-    if (!article) return alert("Please include Article # in GRN (example: 1005 #103)");
+    if (!article) return alert("Please enter Article #");
+    if (!whText) return alert("Please fill Warehouse Article");
     if (!qty || qty <= 0) return alert("Invalid QuantityIN");
     if (!categoryInput) return alert("Please enter Category");
 
@@ -108,7 +120,7 @@ export function initIncoming() {
       const currentCategory = (data.category ?? "").trim();
       const currentArticle = (data.article ?? "").trim();
 
-      // ✅ If matched by NAME but article conflicts, stop.
+      //  If matched by NAME but article conflicts, stop.
       if (
         foundWrap.matchedBy === "name" &&
         article &&
@@ -124,19 +136,19 @@ export function initIncoming() {
 
       const updates = { stock: currentStock + qty };
 
-      // ✅ update category only if empty/N/A
+      //  update category only if empty/N/A
       if (!currentCategory || currentCategory.toLowerCase() === "n/a") {
         updates.category = categoryInput;
       }
 
-      // ✅ update article if missing (but normally it already exists)
+      //  update article if missing (but normally it already exists)
       if (!currentArticle && article) {
         updates.article = article;
       }
 
       await updateDoc(doc(db, "items", found.id), updates);
     } else {
-      // ✅ create new item with correct article + category
+      //  create new item with correct article + category
       await addDoc(itemsCol, {
         article,
         name,
@@ -146,20 +158,20 @@ export function initIncoming() {
       });
     }
 
-    // ✅ log receiving report
-    await addDoc(incomingCol, {
-      grn,
-      warehouseArticle: whText,
-      item: name,
-      qty,
-      price: isNaN(price) ? 0 : price,
-      date,
-      category: categoryInput,
-      article,
-      createdAt: Date.now()
-    });
+    //  log receiving report
+      await addDoc(incomingCol, {
+    warehouseArticle: whText,
+    item: name,
+    qty,
+    price: isNaN(price) ? 0 : price,
+    date,
+    category: categoryInput,
+    article,
+    createdAt: Date.now()
+  });
 
-    alert("✅ Receiving Report submitted! Inventory updated.");
+
+    alert(" Receiving Report submitted! Inventory updated.");
     form.reset();
   });
 }

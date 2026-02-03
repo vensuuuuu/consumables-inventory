@@ -20,8 +20,21 @@ function parseReleaseItem(text) {
   return { name: match[2].trim() };
 }
 
+function formatDateTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+}
+
+
 export function initOutgoing() {
-  // ✅ show outgoing table if you have <tbody id="outgoingBody"></tbody>
+  //  show outgoing table if you have <tbody id="outgoingBody"></tbody>
   const outgoingBody = document.getElementById("outgoingBody");
   if (outgoingBody) {
     onSnapshot(query(outgoingCol, orderBy("createdAt", "desc")), (snap) => {
@@ -34,7 +47,7 @@ export function initOutgoing() {
             <td>${x.qty ?? ""}</td>
             <td>${x.releasedTo ?? ""}</td>
             <td>${x.remarks ?? ""}</td>
-            <td>${x.createdAt ? new Date(x.createdAt).toLocaleString() : ""}</td>
+            <td>${formatDateTime(x.createdAt)}</td>
           </tr>
         `;
       });
@@ -72,7 +85,7 @@ export function initOutgoing() {
       createdAt: Date.now()
     });
 
-    alert("✅ Releasing Form submitted! Stock updated.");
+    alert(" Releasing Form submitted! Stock updated.");
     form.reset();
   });
 }

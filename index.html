@@ -23,14 +23,12 @@
   <main class="wrap">
 
     <!-- SIDEBAR (only once) -->
-    <aside id="side-bar">
       <div class="sidenav">
         <a href="/">
           <img src="images/CO LOGO.png" class="LOGO" alt="Logo">
-          <i class="material-icons">&#xe88a;</i>
         </a>
       </div>
-    </aside>
+    
 
     <!-- INVENTORY TAB -->
     <section id="view-inventory" class="view show">
@@ -58,7 +56,8 @@
 
         <form id="receivingForm" class="form">
          
-          <input id="grnIncoming" placeholder="e.g. 1005 #103" required />
+          <label for="inArticle">GRN Incoming</label>
+          <input id="inArticle" placeholder="103" required/>
 
           <label>Warehouse Article *</label>
           <input id="warehouseArticle" placeholder="# 103 HRT Jade Tissue" required />

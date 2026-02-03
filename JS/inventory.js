@@ -7,7 +7,7 @@ const itemsQ = query(itemsCol, orderBy("createdAt", "desc"));
 export function initInventory() {
   const tbody = document.getElementById("itemsBody");
   if (!tbody) {
-    console.error("❌ itemsBody tbody not found");
+    console.error(" itemsBody tbody not found");
     return;
   }
 
@@ -18,7 +18,7 @@ export function initInventory() {
       const x = d.data();
       const stock = Number(x.stock ?? 0);
 
-      // ✅ hide if stock is 0
+      //  hide if stock is 0
       if (stock <= 0) return;
 
       tbody.innerHTML += `
